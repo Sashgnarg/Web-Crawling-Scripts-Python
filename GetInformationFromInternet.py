@@ -10,6 +10,10 @@ from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 import time
 
+# THIS SCRIPT WILL SEARCH FOR PARTS FROM THE MANUFATURER "HLC" WHEN GIVEN AN ITEM NUMBER, THEN GATHER INFORMATION
+# ABOUT THAT PRODUCT AND DOWNLOAD THE PRODUCT IMAGE, AND FINALLY IT WILL INPUT THAT DATA INTO LIGHTSPEED ECOMMERCE
+
+
 PATH = "E:\webdrivers\chromedriver.exe"
 PATH2 = "E:\webdrivers\chromedriver2.exe"
 

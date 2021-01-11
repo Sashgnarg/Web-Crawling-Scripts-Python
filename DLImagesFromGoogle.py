@@ -6,7 +6,8 @@ import time
 import sys
 import os
 
-# taking user input
+# THIS PROGRAM WILL SEARCH FOR IMAGES ON GOOGLE GIVEN A SEARCH QUERY AND THEN DOWNLOAD THE SPECIFIED NUMBER OF IMAGES.
+
 search_queries = [
 
     'EVO, E-Sport Eye Combo, Light, Ensemble/Set', 'EVO, E-Tec Hero, Helmet, Black, L',
@@ -89,7 +90,7 @@ search_queries = [
     'Maxxis Minion DHR2 Tire 27.5 x 2.40 folding tanwall'
 ]
 
-EAN = [
+image_names = [
     770612310216, 770612309128, 770612309111, 770612309104, 4003318122132, 8435354136556, 8435354135993, 8435354136006,
     8435354130981, 4712805978700, 4712805985678, 768686820090, 831273623906, 768686970368, 768686970580, 4003318725883,
     4003318726064, 4003318726132, 4003318726125, 4712805986620, 643187007198, 4003318775420, 4003318775451,
@@ -117,9 +118,9 @@ EAN = [
 ]
 
 count = 0
-for webpage in range(len(search_queries)):
+for query in range(len(search_queries)):
 
-    site = 'https://www.google.com/search?tbm=isch&q=' + str(search_queries[webpage])
+    site = 'https://www.google.com/search?tbm=isch&q=' + str(search_queries[query])
 
     # providing driver path
     PATH = "E:\webdrivers\chromedriver.exe"
@@ -128,24 +129,7 @@ for webpage in range(len(search_queries)):
     # passing site url
     driver.get(site)
 
-    # if you just want to download 10-15 images then skip the while loop and just write
-    # driver.execute_script("window.scrollBy(0,document.body.scrollHeight)")
 
-    # below while loop scrolls the webpage 7 times(if available)
-
-    i = 0
-
-    # while i < 7:
-    #     # for scrolling page
-    #     driver.execute_script("window.scrollBy(0,document.body.scrollHeight)")
-    #
-    #     try:
-    #         # for clicking show more results button
-    #         driver.find_element_by_xpath("/html/body/div[2]/c-wiz/div[3]/div[1]/div/div/div/div/div[5]/input").click()
-    #     except Exception as e:
-    #         pass
-    #     time.sleep(5)
-    #     i += 1
 
     driver.execute_script("window.scrollBy(0,document.body.scrollHeight)")
 
@@ -153,22 +137,22 @@ for webpage in range(len(search_queries)):
     soup = BeautifulSoup(driver.page_source, 'html.parser')
 
     # closing web browser
-    driver.close()
+    driver.quit()
 
     # scraping image urls with the help of image tag and class used for images
 
     img_tags = soup.find_all("img", class_="rg_i")
     amountOfImagesDownloaded = 0
+    amountOfImagesToDownload = 3
     for i in img_tags:
-        # print(i['src'])
         try:
             # passing image urls one by one and downloading
-            urllib.request.urlretrieve(i['src'], str(webpage) + "-" + str(amountOfImagesDownloaded) + "-" + str(EAN[webpage])+ ".jpg")
+            urllib.request.urlretrieve(i['src'], str(query) + "-" + str(amountOfImagesDownloaded) + "-" + str(image_names[query]) + ".jpg")
 
             count += 1
             amountOfImagesDownloaded += 1
             print("Number of images downloaded = " + str(count), end='\=r')
-            if amountOfImagesDownloaded == 3:
+            if amountOfImagesDownloaded == amountOfImagesToDownload:
                 break
         except Exception as e:
             pass
