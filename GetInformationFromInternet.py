@@ -13,175 +13,118 @@ import time
 # THIS SCRIPT WILL SEARCH FOR PARTS FROM THE MANUFATURER "HLC" WHEN GIVEN AN ITEM NUMBER, THEN GATHER INFORMATION
 # ABOUT THAT PRODUCT AND DOWNLOAD THE PRODUCT IMAGE, AND FINALLY IT WILL INPUT THAT DATA INTO LIGHTSPEED ECOMMERCE
 
+#CONSTANTS
+PRESS_RETURN = 0
+IS_IMAGE = 0
+IS_NOT_IMAGE = 1
 
-PATH = "E:\webdrivers\chromedriver.exe"
-PATH2 = "E:\webdrivers\chromedriver2.exe"
+PATH = "E:/webdrivers/chromedriver.exe"
 
 driverForSearching = webdriver.Chrome(PATH)
 driverForLightSpeed = webdriver.Chrome(PATH)
-
 driverForSearching.maximize_window()
+site1 = 'https://www.hlc.bike/ca/login.aspx'
 site2 = 'https://us.lightspeedapp.com/?name=item.views.quick_add&form_name=view&id=null&tab=details'
+driverForSearching.get(site1)
 driverForLightSpeed.get(site2)
 
 
-def getMSRPFromString(MSRP):
-    # get number from string
-    MSRP = re.search('[0-9.]+', MSRP).group()
-    return MSRP
+class Attribute:
+    def __init__(self, attribute_name, attribute_value_default):
+        #attribute_name = upc,ean etc,
+        self.attribute_name = attribute_name
+        self.attribute_value_default = attribute_value_default
+        self.attribute_value = attribute_value_default
 
 
-def getBrand(brand):
-    # the first word in description is the brand. delete everything after that
-    sep = ','
-    brand = brand.split(sep)[0]
-    return brand
+    def findValue(self, CSS_selector_type, CSS_selector):
+        try:
+            element_location_in_html = WebDriverWait(driverForSearching, 10).until(
+                EC.presence_of_element_located((CSS_selector_type, CSS_selector))
+            )
+            self.attribute_value = element_location_in_html.get_attribute("innerText")
+
+        except:
+            print("error with finding " + self.attribute_name)
+            self.attribute_value = self.attribute_value_default
 
 
-def findUPC():
-    try:
-        upc = WebDriverWait(driverForSearching, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//div[text()='UPC']/following-sibling::div"))
+    def inputValueOnLightspeed(self, CSS_selector, return_value):
+        value_input = WebDriverWait(driverForLightSpeed, 10).until(
+            EC.presence_of_element_located((By.ID, CSS_selector))
         )
-        upcvalue = upc.get_attribute("innerText")
-
-    except:
-        print("error with finding upc")
-        upcvalue = 0
-    finally:
-        return upcvalue
-
-
-def findEAN():
-    try:
-        ean = WebDriverWait(driverForSearching, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//div[text()='EAN']/following-sibling::div"))
-        )
-        eanvalue = ean.get_attribute("innerText")
-    except:
-        print("error with finding  ean")
-        eanvalue = '0'
-    finally:
-        return eanvalue
+        if(return_value == PRESS_RETURN):
+            value_input.clear()
+            value_input.send_keys(self.attribute_value)
+            value_input.send_keys(Keys.RETURN)
+        else:
+            value_input.clear()
+            value_input.send_keys(self.attribute_value)
 
 
-def findDescription():
-    try:
-        description = WebDriverWait(driverForSearching, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "variantDescription"))
-        )
-        descriptionvalue = description.get_attribute("innerText")
-    except:
-        print("error with finding  description")
-        descriptionvalue = ''
-    finally:
-        return descriptionvalue
+    def filterPriceFromString(self):
+        # get number from string
+        try:
+            self.attribute_value = re.search('[0-9.]+', self.attribute_value).group()
+        except:
+            return 0
+        return self.attribute_value
+
+    def filterBrand(self, value):
+        # the first word in description is the brand. delete everything after that
+        sep = ','
+        self.attribute_value = value.split(sep)[0]
 
 
-def findMSRP():
-    try:
-        MSRP = WebDriverWait(driverForSearching, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "priceSmall"))
-        )
-        MSRPvalue = MSRP.get_attribute("innerText")
-
-    except:
-        print("error with finding  MSRP")
-        MSRPvalue = '0'
-    finally:
-        return MSRPvalue
 
 
-def findAndDownloadImage():
-    try:
-        image = WebDriverWait(driverForSearching, 10).until(
-            EC.presence_of_element_located((By.ID, "mainImage"))
-        )
-    except:
-        print("image could not be downloaded")
-        return ''
-
-    image_url = image.get_attribute('src')
-    filename = image_url.split("/")[-1]
-    # Open the url image, set stream to True, this will return the stream content.
-    r = requests.get(image_url, stream=True)
-
-    # Check if the image was retrieved successfully
-    if r.status_code == 200:
-        # Set decode_content value to True, otherwise the downloaded image file's size will be zero.
-        r.raw.decode_content = True
-
-        # Open a local file with wb ( write binary ) permission.
-        with open(filename, 'wb') as f:
-            shutil.copyfileobj(r.raw, f)
-
-        print('Image sucessfully Downloaded: ', filename)
-    else:
-        print('Image Couldn\'t be retreived')
-
-    return filename
 
 
-def getInputFromUser():
-    item_number = input("input the item number (including the dash): ")
-    getInfoFromInternet(item_number)
 
 
-def getInfoFromInternet(item_number):
-    site = 'https://www.hlc.bike/ca/Catalog/Item/' + item_number
-    driverForSearching.get(site)
-
-    upc = findUPC()
-    ean = findEAN()
-    description = findDescription()
-    msrp = findMSRP()
-    image = findAndDownloadImage()
-    vendor = 'HLC'
-    brand = getBrand(description)
-
-    inputDataOnLightspeed(upc, ean, description, item_number, msrp, vendor, brand)
 
 
-def inputDataOnLightspeed(upc, ean, description, item_number, msrp, vendor, brand):
-    upcInput = WebDriverWait(driverForLightSpeed, 10).until(
-        EC.presence_of_element_located((By.ID, "view_upc"))
-    )
-    eanInput = WebDriverWait(driverForLightSpeed, 10).until(
-        EC.presence_of_element_located((By.ID, "view_ean"))
-    )
-    descriptionInput = WebDriverWait(driverForLightSpeed, 10).until(
-        EC.presence_of_element_located((By.ID, "view_description"))
-    )
-    man_SKUInput = WebDriverWait(driverForLightSpeed, 10).until(
-        EC.presence_of_element_located((By.ID, "view_man_sku"))
-    )
-    msrpInput = WebDriverWait(driverForLightSpeed, 10).until(
-        EC.presence_of_element_located((By.ID, "view_price_default"))
-    )
-    vendorInput = WebDriverWait(driverForLightSpeed, 10).until(
-        EC.presence_of_element_located((By.ID, "view_vendor_id"))
-    )
-    brandInput = WebDriverWait(driverForLightSpeed, 10).until(
-        EC.presence_of_element_located((By.ID, "view_manufacturer_id"))
-    )
 
-    upcInput.send_keys(upc)
-    eanInput.send_keys(ean)
-    descriptionInput.send_keys(description)
-    man_SKUInput.send_keys(item_number)
 
-    msrpInput.clear()
-    msrpInput.send_keys(msrp)
 
-    vendorInput.send_keys(vendor)
-    vendorInput.send_keys(Keys.RETURN)
 
-    brandInput.send_keys(brand)
-    brandInput.send_keys(Keys.RETURN)
+
+
+def getItemNumberFromUser():
+    item_number = input("enter -1 to exit\ninput the item number (including the dash): ")
+    if(item_number == '-1'):
+        driverForSearching.quit()
+        driverForLightSpeed.quit()
+        return
+
 
 
 def main():
-    getInputFromUser()
+    getItemNumberFromUser()
+    UPC = Attribute('UPC', 0)
+    EAN = Attribute('EAN', 0)
+    description = Attribute('description', 0)
+    defaultPrice = Attribute('defaultPrice', 0)
+    msrp = Attribute('msrp', 0)
+    vendor = Attribute('vendor', 0)
+    brand = Attribute('brand', 0)
+
+    UPC.findValue(By.XPATH, "//div[text()='UPC']/following-sibling::div")
+    EAN.findValue(By.XPATH, "//div[text()='EAN']/following-sibling::div")
+    description.findValue(By.CLASS_NAME, "variantDescription")
+    defaultPrice.findValue(By.ID, "detailVariantPrice")
+    msrp.findValue(By.CLASS_NAME, "priceSmall")
+    vendor.findValue(By.ID, "view_upc")
+    brand.filterBrand(description.attribute_value)
+
+    UPC.inputValueOnLightspeed(By.ID, "view_upc")
+    UPC.inputValueOnLightspeed(By.ID, "view_ean")
+    UPC.inputValueOnLightspeed(By.ID, "view_description")
+    UPC.inputValueOnLightspeed(By.ID, "view_man_sku")
+    UPC.inputValueOnLightspeed(By.ID, "view_price_default")
+    UPC.inputValueOnLightspeed(By.ID, "view_vendor_id")
+    UPC.inputValueOnLightspeed(By.ID, "view_manufacturer_id")
+    UPC.inputValueOnLightspeed(By.ID, "view_default_cost")
 
 
 main()
