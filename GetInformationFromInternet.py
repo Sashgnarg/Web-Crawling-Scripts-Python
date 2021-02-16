@@ -15,8 +15,7 @@ import time
 
 #CONSTANTS
 PRESS_RETURN = 0
-IS_IMAGE = 0
-IS_NOT_IMAGE = 1
+DONT_PRESS_RETURN = 1
 
 PATH = "E:/webdrivers/chromedriver.exe"
 
@@ -28,6 +27,36 @@ site2 = 'https://us.lightspeedapp.com/?name=item.views.quick_add&form_name=view&
 driverForSearching.get(site1)
 driverForLightSpeed.get(site2)
 
+
+
+def findAndDownloadImage():
+    try:
+        image = WebDriverWait(driverForSearching, 10).until(
+            EC.presence_of_element_located((By.ID, "mainImage"))
+        )
+    except:
+        print("image could not be downloaded")
+        return ''
+
+    image_url = image.get_attribute('src')
+    filename = image_url.split("/")[-1]
+    # Open the url image, set stream to True, this will return the stream content.
+    r = requests.get(image_url, stream=True)
+
+    # Check if the image was retrieved successfully
+    if r.status_code == 200:
+        # Set decode_content value to True, otherwise the downloaded image file's size will be zero.
+        r.raw.decode_content = True
+
+        # Open a local file with wb ( write binary ) permission.
+        with open(filename, 'wb') as f:
+            shutil.copyfileobj(r.raw, f)
+
+        print('Image sucessfully Downloaded: ', filename)
+    else:
+        print('Image Couldn\'t be retreived')
+
+    return filename
 
 class Attribute:
     def __init__(self, attribute_name, attribute_value_default):
@@ -49,7 +78,7 @@ class Attribute:
             self.attribute_value = self.attribute_value_default
 
 
-    def inputValueOnLightspeed(self, CSS_selector, return_value):
+    def inputValueOnLightspeed(self, CSS_selector_type, CSS_selector, return_value):
         value_input = WebDriverWait(driverForLightSpeed, 10).until(
             EC.presence_of_element_located((By.ID, CSS_selector))
         )
@@ -76,55 +105,52 @@ class Attribute:
         self.attribute_value = value.split(sep)[0]
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def getItemNumberFromUser():
     item_number = input("enter -1 to exit\ninput the item number (including the dash): ")
-    if(item_number == '-1'):
-        driverForSearching.quit()
-        driverForLightSpeed.quit()
-        return
+    return item_number
+
 
 
 
 def main():
-    getItemNumberFromUser()
-    UPC = Attribute('UPC', 0)
-    EAN = Attribute('EAN', 0)
-    description = Attribute('description', 0)
-    defaultPrice = Attribute('defaultPrice', 0)
-    msrp = Attribute('msrp', 0)
-    vendor = Attribute('vendor', 0)
-    brand = Attribute('brand', 0)
+    while True:
+        item_number = getItemNumberFromUser()
+        if(item_number == '-1'):
+            driverForSearching.quit()
+            driverForLightSpeed.quit()
+            return
+        site = 'https://www.hlc.bike/ca/Catalog/Item/' + item_number
+        driverForSearching.get(site)
 
-    UPC.findValue(By.XPATH, "//div[text()='UPC']/following-sibling::div")
-    EAN.findValue(By.XPATH, "//div[text()='EAN']/following-sibling::div")
-    description.findValue(By.CLASS_NAME, "variantDescription")
-    defaultPrice.findValue(By.ID, "detailVariantPrice")
-    msrp.findValue(By.CLASS_NAME, "priceSmall")
-    vendor.findValue(By.ID, "view_upc")
-    brand.filterBrand(description.attribute_value)
+        UPC = Attribute('UPC', 0)
+        EAN = Attribute('EAN', 0)
+        description = Attribute('description', '')
+        defaultPrice = Attribute('defaultPrice', 0)
+        msrp = Attribute('msrp', 0)
+        vendor = Attribute('vendor', 'HLC')
+        brand = Attribute('brand', '')
+        man_sku = Attribute('man_sku', item_number)
 
-    UPC.inputValueOnLightspeed(By.ID, "view_upc")
-    UPC.inputValueOnLightspeed(By.ID, "view_ean")
-    UPC.inputValueOnLightspeed(By.ID, "view_description")
-    UPC.inputValueOnLightspeed(By.ID, "view_man_sku")
-    UPC.inputValueOnLightspeed(By.ID, "view_price_default")
-    UPC.inputValueOnLightspeed(By.ID, "view_vendor_id")
-    UPC.inputValueOnLightspeed(By.ID, "view_manufacturer_id")
-    UPC.inputValueOnLightspeed(By.ID, "view_default_cost")
+        UPC.findValue(By.XPATH, "//div[text()='UPC']/following-sibling::div")
+        EAN.findValue(By.XPATH, "//div[text()='EAN']/following-sibling::div")
+        description.findValue(By.CLASS_NAME, "variantDescription")
+        defaultPrice.findValue(By.ID, "detailVariantPrice")
+        defaultPrice.attribute_value = defaultPrice.filterPriceFromString()
+        msrp.findValue(By.CLASS_NAME, "priceSmall")
+        msrp.attribute_value = msrp.filterPriceFromString()
+        vendor.attribute_value = 'HLC'
+        brand.filterBrand(description.attribute_value)
+        findAndDownloadImage()
+
+        UPC.inputValueOnLightspeed(By.ID, "view_upc", DONT_PRESS_RETURN)
+        EAN.inputValueOnLightspeed(By.ID, "view_ean", DONT_PRESS_RETURN)
+        description.inputValueOnLightspeed(By.ID, "view_description", DONT_PRESS_RETURN)
+        man_sku.inputValueOnLightspeed(By.ID, "view_man_sku", DONT_PRESS_RETURN)
+        defaultPrice.inputValueOnLightspeed(By.ID, "view_default_cost", DONT_PRESS_RETURN)
+        vendor.inputValueOnLightspeed(By.ID, "view_vendor_id", PRESS_RETURN)
+        brand.inputValueOnLightspeed(By.ID, "view_manufacturer_id",PRESS_RETURN)
+        msrp.inputValueOnLightspeed(By.ID, "view_price_default", DONT_PRESS_RETURN)
+
 
 
 main()
